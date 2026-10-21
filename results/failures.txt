@@ -1,10 +1,10 @@
 Trigram (k=0.1) top-3 misses (context -> true word | suggestions):
-  'the' -> 'foxes' | ['doctors', 'teachers', 'girls']
-  'the foxes eat the' -> 'cakes' | ['bread', 'apples', 'soup']
-  'the' -> 'boys' | ['doctors', 'teachers', 'girls']
-  'the boys' -> 'sell' | ['watch', 'buy', 'bring']
-  'the' -> 'young' | ['doctors', 'teachers', 'girls']
-  'the young dogs play in the' -> 'kitchen' | ['park', 'garden', 'school']
+  '<start>' -> 'a' | ['the', '``', 'he']
+  'a' -> 'philosopher' | ['young', 'few', 'measure']
+  'a philosopher' -> 'may' | ['between', 'howsam', 'speculated']
+  'a philosopher may' -> 'point' | ['between', 'howsam', 'speculated']
+  'a philosopher may point' -> 'out' | ['between', 'howsam', 'speculated']
+  'a philosopher may point out that' -> 'the' | [',', 'georgia', 'mandatory']
 
-Test positions whose trigram context never appears in training: 9
-  examples: ['brave foxes', 'brave girls', 'happy bread', 'hungry key', 'lazy soup']
+Test positions whose trigram context never appears in training: 12568
+  examples: ['$1,000,000 to', '$1,250,000 above', '$1,450,000,000 in', '$1,750,000 budget', '$10,000-per-year french-born']

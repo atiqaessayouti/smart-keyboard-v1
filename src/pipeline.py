@@ -57,13 +57,36 @@ class NGramModel:
         den = total + self.k * self.V
         return num / den if den > 0 else 0.0         # k = 0 and unseen context -> probability 0
 
-    def next_word_distribution(self, words):
-        ctx = self.context(words)
-        return {w: self.prob(ctx, w) for w in self.vocab if w != UNK}
-
     def top_k(self, words, k=3):
-        dist = self.next_word_distribution(words)
-        return sorted(dist.items(), key=lambda x: (-x[1], x[0]))[:k]
+        """Optimized: only calculates probabilities for words that actually appear after the context."""
+        ctx = self.context(words)
+        counts = self.ctx_counts.get(ctx, Counter())
+        total = self.ctx_totals.get(ctx, 0)
+        den = total + self.k * self.V
+        
+        if den == 0:
+            return [(w, 0.0) for w in list(self.vocab)[:k]]
+            
+        scored = []
+        # Calculate probabilities ONLY for words seen after this context
+        for w, count in counts.items():
+            if w != UNK:
+                scored.append((w, (count + self.k) / den))
+                
+        scored.sort(key=lambda x: (-x[1], x[0]))
+        
+        # If we have fewer than k words, fill with unseen words
+        if len(scored) < k:
+            unseen_prob = self.k / den
+            seen_set = set(counts.keys())
+            for w in self.vocab:
+                if w not in seen_set and w != UNK:
+                    scored.append((w, unseen_prob))
+                    if len(scored) == k:
+                        break
+                        
+        scored.sort(key=lambda x: (-x[1], x[0]))
+        return scored[:k]
 
     def seen_context(self, words):
         return self.context(words) in self.ctx_counts
@@ -109,7 +132,17 @@ class InterpolatedModel:
 
     def top_k(self, words, k=3):
         hist = self.clean(words)
-        dist = {w: self.prob_words(hist, w) for w in self.vocab if w != UNK}
+        candidates = set()
+        # Only evaluate words that appeared in the training data for these contexts
+        for m in self.models:
+            ctx = m.context(words)
+            if ctx in m.ctx_counts:
+                candidates.update(m.ctx_counts[ctx].keys())
+                
+        if len(candidates) < k:
+            candidates.update(list(self.vocab)[:k*2])
+            
+        dist = {w: self.prob_words(hist, w) for w in candidates if w != UNK}
         return sorted(dist.items(), key=lambda x: (-x[1], x[0]))[:k]
 
     def perplexity(self, sentences):
@@ -144,11 +177,3 @@ def top_k_accuracy(model, sentences, k=3):
             elif len(failures) < 200:
                 failures.append((" ".join(s[:i]) or "<start>", true_w, guess))
     return hits / total, failures
-
-
-if __name__ == "__main__":
-    docs = load_documents()
-    train, test = split_by_document(docs)
-    m = NGramModel(train, n=3, k=0.1)
-    print("after 'the girls':", m.top_k(["the", "girls"]))
-    print("test perplexity  :", round(m.perplexity(test)[0], 2))
